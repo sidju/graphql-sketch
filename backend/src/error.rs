@@ -33,13 +33,7 @@ pub enum InternalError {
 impl Reply for InternalError {
   fn into_response(self) -> Response<Body> {
     eprintln!("{:?}", &self);
-    let mut re = Response::new("Internal server error".into());
-    *re.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-    re.headers_mut().insert(
-      "Content-Type",
-      HeaderValue::from_static("application/json; charset=utf-8"),
-    );
-    re
+      ClientError::InternalError.into_response()
   }
 }
 
@@ -64,6 +58,8 @@ impl Reply for ClientError {
       Self::UsernameTaken => StatusCode::BAD_REQUEST,
       Self::BadLogin => StatusCode::UNAUTHORIZED,
       Self::AccountLocked => StatusCode::UNAUTHORIZED,
+
+      Self::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
     };
     re.headers_mut().insert(
       "Content-Type",

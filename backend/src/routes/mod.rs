@@ -5,18 +5,26 @@ use std::convert::Infallible;
 use crate::auth::Permissions;
 use crate::sqlx_order;
 use crate::{Error, Reply, State};
+use crate::graphql::Schema;
 
 mod utils;
 pub use utils::*;
+
+mod graphql;
+use graphql::graphql;
 
 mod api;
 
 type Response = hyper::Response<hyper::Body>;
 type Request = hyper::Request<hyper::Body>;
 
-pub async fn handle_request(state: &'static State, req: Request) -> Result<Response, Infallible> {
+pub async fn handle_request(
+  state: &'static State,
+  schema: &'static Schema,
+  req: Request,
+) -> Result<Response, Infallible> {
   // Call inner, unwrap its opaque type to a Response<Body>
-  Ok(route(state, req).await.into_response())
+  Ok(route(state, schema, req).await.into_response())
 }
 
 // Static files for the frontend
@@ -26,12 +34,7 @@ static INDEX_HTML_ETAG: HeaderValue =
 static STYLE_CSS: &str = include_str!("../../../frontend/style.css");
 static STYLE_CSS_ETAG: HeaderValue =
   HeaderValue::from_static(include_str!("../../../frontend/style.css.etag"));
-static PACKAGE_JS: &str = include_str!("../../../frontend/pkg/package.js");
-static PACKAGE_JS_ETAG: HeaderValue =
-  HeaderValue::from_static(include_str!("../../../frontend/pkg/package.js.etag"));
-static PACKAGE_WASM: &[u8] = include_bytes!("../../../frontend/pkg/package_bg.wasm");
-static PACKAGE_WASM_ETAG: HeaderValue =
-  HeaderValue::from_static(include_str!("../../../frontend/pkg/package_bg.wasm.etag"));
+
 // Client-cache config for them
 // Cache for one week, use and validate in the last day of that week.
 // Daily and consistent weekly users will always use cache, upgrades can be
@@ -45,7 +48,11 @@ static CACHE_CONTROL: HeaderValue = HeaderValue::from_static(
 
 // We have an inner handler to allow returning our own types,
 // converting them into responses in the outer handler
-async fn route(state: &'static State, req: Request) -> Result<Response, Error> {
+async fn route(
+  state: &'static State,
+  schema: &'static Schema,
+  req: Request,
+) -> Result<Response, Error> {
   // Match on path to send into API or HTML module
   let mut path_vec: Vec<String> = req
     .uri()
@@ -71,7 +78,11 @@ async fn route(state: &'static State, req: Request) -> Result<Response, Error> {
       re.headers_mut()
         .insert("cache-control", HeaderValue::from_static("no-store"));
       Ok(re)
-    }
+    },
+    Some("graphql") => {
+      verify_path_end(&path_vec, &req)?;
+      graphql(state, schema, req)
+    },
     None | Some("") | Some("index.html") => {
       verify_method_path_end(&path_vec, &req, &Method::GET)?;
       // Use if-none-match to only send data if needed
@@ -85,7 +96,7 @@ async fn route(state: &'static State, req: Request) -> Result<Response, Error> {
       re.headers_mut()
         .insert("cache-control", CACHE_CONTROL.clone());
       Ok(re)
-    }
+    },
     Some("style.css") => {
       verify_method_path_end(&path_vec, &req, &Method::GET)?;
       // Use if-none-match to only send data if needed
@@ -99,36 +110,7 @@ async fn route(state: &'static State, req: Request) -> Result<Response, Error> {
       re.headers_mut()
         .insert("cache-control", CACHE_CONTROL.clone());
       Ok(re)
-    }
-    // Serve webassembly file
-    Some("package.js") => {
-      verify_method_path_end(&path_vec, &req, &Method::GET)?;
-      // Use if-none-match to only send data if needed
-      let etag = req.headers().get("if-none-match");
-      let mut re = if Some(&PACKAGE_JS_ETAG) == etag {
-        not_modified()?
-      } else {
-        javascript(PACKAGE_JS)?
-      };
-      re.headers_mut().insert("etag", PACKAGE_JS_ETAG.clone());
-      re.headers_mut()
-        .insert("cache-control", CACHE_CONTROL.clone());
-      Ok(re)
-    }
-    Some("package_bg.wasm") => {
-      verify_method_path_end(&path_vec, &req, &Method::GET)?;
-      // Use if-none-match to only send data if needed
-      let etag = req.headers().get("if-none-match");
-      let mut re = if Some(&PACKAGE_WASM_ETAG) == etag {
-        not_modified()?
-      } else {
-        webassembly(PACKAGE_WASM)?
-      };
-      re.headers_mut().insert("etag", PACKAGE_WASM_ETAG.clone());
-      re.headers_mut()
-        .insert("cache-control", CACHE_CONTROL.clone());
-      Ok(re)
-    }
+    },
     // For ALL other paths, serve index file
     _ => Err(Error::path_not_found(&req)),
   }

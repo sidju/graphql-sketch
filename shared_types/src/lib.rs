@@ -199,4 +199,6 @@ pub enum ClientError {
   UsernameTaken,
   BadLogin,
   AccountLocked,
+
+  InternalError,
 }

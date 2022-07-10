@@ -35,7 +35,7 @@ pub fn css(data: &'static str) -> Result<Response, Error> {
   );
   Ok(re)
 }
-pub fn javascript(data: &'static str) -> Result<Response, Error> {
+pub fn _javascript(data: &'static str) -> Result<Response, Error> {
   let mut re = Response::new(data.into());
   re.headers_mut().insert(
     "Content-Type",
@@ -43,7 +43,7 @@ pub fn javascript(data: &'static str) -> Result<Response, Error> {
   );
   Ok(re)
 }
-pub fn webassembly(data: &'static [u8]) -> Result<Response, Error> {
+pub fn _webassembly(data: &'static [u8]) -> Result<Response, Error> {
   let mut re = Response::new(data.into());
   re.headers_mut()
     .insert("Content-Type", HeaderValue::from_static("application/wasm"));
@@ -136,6 +136,9 @@ pub async fn parse_json<T: DeserializeOwned>(
   Ok(data)
 }
 pub fn parse_filter<T: DeserializeOwned>(req: &Request) -> Result<T, Error> {
+  parse_query(req)
+}
+pub fn parse_query<T: DeserializeOwned>(req: &Request) -> Result<T, Error> {
   let query_str = req.uri().query().unwrap_or("");
   let filter: T = serde_urlencoded::from_str(query_str)?;
   Ok(filter)
