@@ -10,6 +10,8 @@ pub struct State {
   pub hasher: Argon2<'static>,
   // Connection pool to database
   pub db_pool: sqlx::postgres::PgPool,
+  pub mongodb_client: mongodb::Client,
+  pub mongodb: mongodb::Database,
 
   // Configurations used directly
   pub login_delay: u64,
@@ -60,6 +62,12 @@ pub async fn init_state() -> &'static State {
     .await
     .expect("Failed to connect to database");
 
+  let mongoconf = mongodb::options::ClientOptions::parse(
+    "mongodb://pf-admin:pf-password@pf.er9br.mongodb.net/"
+  ).await.unwrap();
+  let mongodb_client = mongodb::Client::with_options(mongoconf).unwrap();
+  let mongodb = mongodb_client.database("pf");
+
   // When state exists we initialize all the things related to it
   sqlx::migrate!("./migrations")
     .run(&db_pool)
@@ -77,10 +85,12 @@ pub async fn init_state() -> &'static State {
 
   // Return a reference to a State struct with 'static lifetime
   Box::leak(Box::new(State {
-    hasher: hasher,
-    cpu_semaphore: cpu_semaphore,
-    db_pool: db_pool,
-    login_delay: login_delay,
-    max_content_len: max_content_len,
+    hasher,
+    cpu_semaphore,
+    db_pool,
+    mongodb_client,
+    mongodb,
+    login_delay,
+    max_content_len,
   }))
 }

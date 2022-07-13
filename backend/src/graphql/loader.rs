@@ -9,11 +9,11 @@ use super::async_trait::async_trait;
 use super::{
   Spell,
   SpellName,
-  SpellId,
 };
 
 pub struct DatabaseLoader{
-  pub db_pool: &'static sqlx::postgres::PgPool,
+  pub mongodb: &'static mongodb::Database,
+  pub mongodb_client: &'static mongodb::Client,
 }
 
 #[async_trait]
