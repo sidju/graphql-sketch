@@ -10,10 +10,12 @@ use hyper::header::ToStrError as UnreadableHeaderError;
 use serde_json::Error as JsonError;
 use serde_urlencoded::de::Error as UrlEncodingError;
 use std::num::ParseIntError;
+use async_graphql::ParseRequestError;
 // Private errors to wrap
 use hyper::Error as ConnectionError;
 use password_hash::Error as HashingError;
 use sqlx::Error as DbError;
+use mongodb::error::Error as MongodbError;
 use tokio::sync::AcquireError;
 use tokio::task::JoinError;
 // Client facing error type
@@ -28,6 +30,7 @@ pub enum InternalError {
   Semaphore(AcquireError),
   Hash(HashingError),
   Db(DbError),
+  Mongodb(MongodbError),
   Connection(ConnectionError),
 }
 impl Reply for InternalError {
@@ -53,6 +56,7 @@ impl Reply for ClientError {
       Self::InvalidJson(_) => StatusCode::BAD_REQUEST,
       Self::InvalidUrlEncoding(_) => StatusCode::BAD_REQUEST,
       Self::InvalidIndexPath(_) => StatusCode::BAD_REQUEST,
+      Self::Graphql(_) => StatusCode::BAD_REQUEST,
 
       Self::BadPassword => StatusCode::BAD_REQUEST,
       Self::UsernameTaken => StatusCode::BAD_REQUEST,
@@ -161,6 +165,20 @@ impl Reply for Error {
     }
   }
 }
+impl std::fmt::Display for Error {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+    let text = match self {
+      Self::InternalError(_) => {
+        eprintln!("{self:?}");
+        serde_json::to_string(&ClientError::InternalError).unwrap()
+      },
+      Self::ClientError(e) => {
+        serde_json::to_string(&e).unwrap()
+      },
+    };
+    write!(f, "{}", text)
+  }
+}
 
 // Implement From for library errors
 // Note that the from for ParseIntError is for the most common origin
@@ -204,5 +222,15 @@ impl From<DbError> for Error {
 impl From<ConnectionError> for Error {
   fn from(e: ConnectionError) -> Self {
     Self::InternalError(InternalError::Connection(e))
+  }
+}
+impl From<ParseRequestError> for Error {
+  fn from(e: ParseRequestError) -> Self {
+    Self::ClientError(ClientError::Graphql(format!("{}", e)))
+  }
+}
+impl From<MongodbError> for Error {
+  fn from(e: MongodbError) -> Self {
+    Self::InternalError(InternalError::Mongodb(e))
   }
 }

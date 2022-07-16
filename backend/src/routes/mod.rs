@@ -81,7 +81,11 @@ async fn route(
     },
     Some("graphql") => {
       verify_path_end(&path_vec, &req)?;
-      graphql(state, schema, req)
+      graphql(state, schema, req).await
+    },
+    Some("graphql-editor") => {
+      verify_method_path_end(&path_vec, &req, &Method::GET)?;
+      html(async_graphql::http::graphiql_source("http://localhost:8080/graphql", None))
     },
     None | Some("") | Some("index.html") => {
       verify_method_path_end(&path_vec, &req, &Method::GET)?;

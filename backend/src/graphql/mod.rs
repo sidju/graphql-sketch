@@ -18,6 +18,7 @@ pub fn create_schema(state: &'static crate::State) -> &'static Schema {
         mongodb: &state.mongodb,
         mongodb_client: &state.mongodb_client,
       }, tokio::task::spawn))
+      .data(state)
       .finish()
   ))
 }

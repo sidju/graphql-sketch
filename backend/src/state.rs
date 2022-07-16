@@ -33,6 +33,8 @@ pub async fn init_state() -> &'static State {
     .expect("MAX_NR_CPU_THREADS could not be parsed as an unsigned integer.");
   let db_connstring =
     var("DATABASE_URL").expect("DB_CONNSTRING must be present in environment or .env.");
+  let mongodb_connstring =
+    var("MONGODB_URL").expect("MONGODB_URL must be present in environment or .env.");
   let admin_password =
     var("ADMIN_PASSWORD").expect("ADMIN_PASSWORD must be present in environment or .env.");
   let login_delay = var("LOGIN_DELAY")
@@ -63,7 +65,7 @@ pub async fn init_state() -> &'static State {
     .expect("Failed to connect to database");
 
   let mongoconf = mongodb::options::ClientOptions::parse(
-    "mongodb://pf-admin:pf-password@pf.er9br.mongodb.net/"
+    mongodb_connstring
   ).await.unwrap();
   let mongodb_client = mongodb::Client::with_options(mongoconf).unwrap();
   let mongodb = mongodb_client.database("pf");

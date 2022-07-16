@@ -19,11 +19,21 @@ pub struct DatabaseLoader{
 #[async_trait]
 impl Loader<SpellName> for DatabaseLoader {
   type Value = Spell;
-  type Error = Arc<sqlx::Error>;
+  type Error = Arc<crate::Error>;
 
   async fn load(&self,
     keys: &[SpellName],
   ) -> Result<HashMap<SpellName, Self::Value>, Self::Error> {
-    Ok(HashMap::new())
+    let collection = self.mongodb.collection::<Spell>("spells");
+    let mut spells = HashMap::new();
+    let mut cursor = collection.find(
+      bson::doc!{"name": { "$in": keys }},
+      None,
+    ).await.map_err(|e| crate::Error::from(e))?;
+    while cursor.advance().await.map_err(|e| crate::Error::from(e))? {
+      let spell = cursor.deserialize_current().map_err(|e| crate::Error::from(e))?;
+      spells.insert(spell.name.clone(), spell);
+    }
+    Ok(spells)
   }
 }

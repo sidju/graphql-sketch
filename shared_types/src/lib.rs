@@ -193,6 +193,7 @@ pub enum ClientError {
   InvalidJson(String),
   InvalidUrlEncoding(String),
   InvalidIndexPath(String),
+  Graphql(String),
 
   // Finally non-parsing user errors
   BadPassword,
