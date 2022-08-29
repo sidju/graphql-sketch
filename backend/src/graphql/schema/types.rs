@@ -5,13 +5,15 @@ pub type SpellName = String;
 
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct School {
   pub school: String,
   pub subschool: Option<String>,
-  pub descriptors: Vec<String>,
+  pub descriptors: Option<Vec<String>>,
 }
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct Components {
   pub verbal: bool,
   pub somatic: bool,
@@ -21,6 +23,7 @@ pub struct Components {
 }
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct Effect {
   pub range: String,
   pub area: Option<String>,
@@ -30,6 +33,7 @@ pub struct Effect {
 }
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct SavingThrow {
   pub fortitude: bool,
   pub reflex: bool,
@@ -38,12 +42,14 @@ pub struct SavingThrow {
 }
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct SpellResistance {
   pub applies: bool,
   pub description: Option<String>,
 }
 #[derive(Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct Spell {
   pub name: String, // Using spell name here fills no purpose
   pub source_book: String,
@@ -62,28 +68,39 @@ pub struct Spell {
 
 /// Uses mongodb's regex engine
 #[derive(Clone, Default, Serialize, Deserialize, InputObject)]
+#[serde(default)]
+#[graphql(rename_fields = "snake_case")]
 pub struct SpellFilter {
-  pub name_regex: Option<String>,
-  pub school_regex: Option<String>,
+  pub name_regex: String,
+  pub school_regex: String,
+  /// To search for spells specifically without subschool use null/None
+  #[graphql(default_with = "Some(String::default())")]
   pub subschool_regex: Option<String>,
-  pub descriptor_regex: Option<String>,
-  pub class_regex: Option<String>,
-  pub class_level: Option<u8>,
-  pub casting_time_unit_regex: Option<String>,
+  pub descriptor_regex: String,
+  /// If given excludes spells with a descriptor matching
+  pub descriptor_nregex: Option<String>,
+  /// Spells matching class and spell level are returned,
+  pub class_regex: String,
+  /// Combines with class_regex if given to require spell level for that class
+  /// null/None matches all levels
+  pub class_spell_level: Option<u8>,
+  pub casting_time_regex: String,
   pub verbal: Option<bool>,
   pub somatic: Option<bool>,
   pub divine_focus: Option<bool>,
+  /// To search for spells specifically without focus use null/None
   pub focus_regex: Option<String>,
+  /// To search for spells specifically without materials use null/None
   pub material_regex: Option<String>,
-  pub range_regex: Option<String>,
-  pub area_regex: Option<String>,
-  pub target_regex: Option<String>,
-  pub duration_regex: Option<String>,
+  pub range_regex: String,
+  pub area_regex: String,
+  pub target_regex: String,
+  pub duration_regex: String,
   pub dismissable: Option<bool>,
   pub fortitude: Option<bool>,
   pub dexterity: Option<bool>,
   pub will: Option<bool>,
-  pub save_description_regex: Option<String>,
+  pub save_description_regex: String,
   pub spell_resistance: Option<bool>,
-  pub description: Option<String>,
+  pub description: String,
 }
